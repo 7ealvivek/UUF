@@ -21,56 +21,73 @@ while getopts "l:u:" opt; do
 done
 
 # Ensure all necessary tools are available
-for tool in gau waybackurls katana arjun urldedupe; do
+for tool in gauplus waymore katana arjun urldedupe; do
   if ! command -v $tool &> /dev/null; then
     echo "$tool is not installed. Please install it and try again."
     exit 1
   fi
 done
 
+# Check if the targets file exists
+if [ -z "$URL" ] && [ ! -f "$TARGET_FILE" ]; then
+  echo "$TARGET_FILE not found. Please provide the file with domain names."
+  exit 1
+fi
+
+# Create a directory to store results
+mkdir -p recon_results
+
 # Function to process a single domain
 process_domain() {
   local DOMAIN=$1
-  local CLEAN_DOMAIN=$(echo "$DOMAIN" | sed 's/[^a-zA-Z0-9]/_/g')  # Sanitize domain for filenames
-
-  echo "Processing domain: '$DOMAIN'"  # Debugging output with quotes
-  
+  echo "Processing domain: $DOMAIN"
   echo "Starting URL gathering for $DOMAIN..."
 
-  # Define output filenames
-  local ALL_URLS_FILE="${CLEAN_DOMAIN}_all_urls.txt"
-  local FINAL_URLS_FILE="${CLEAN_DOMAIN}_final_urls.txt"
-  local ARJUN_PARAMS_FILE="${CLEAN_DOMAIN}_arjun_params.txt"
+  # Use gauplus to gather URLs based on provided options
+  if [ -n "$URL" ]; then
+    echo "Running gauplus with subdomains for $DOMAIN..."
+    gauplus -b woff,css,png,svg,jpg,woff2,jpeg,gif,svg -subs -random-agent "$DOMAIN" > gauplus.txt || echo "gauplus failed."
+  else
+    echo "Running gauplus without subdomains for $DOMAIN..."
+    gauplus -b woff,css,png,svg,jpg,woff2,jpeg,gif,svg -random-agent "$DOMAIN" > gauplus.txt || echo "gauplus failed."
+  fi
 
-  # Run the URL gathering tools and combine outputs
-  gau "$DOMAIN" | tee -a "$ALL_URLS_FILE"
-  waybackurls "$DOMAIN" | tee -a "$ALL_URLS_FILE"
-  katana -u "$DOMAIN" -d 10 -u -c -silent -nc -jc -kf -fx -xhr -ef woff,css,png,svg,jpg,woff2,jpeg,gif,svg | tee -a "$ALL_URLS_FILE"
+  # Use waymore to gather URLs
+  echo "Running waymore..."
+  waymore -i "$DOMAIN" -mode U --retries 3 --timeout 10 --memory-threshold 95 --processes 5 --config ~/.config/waymore/config.yml > waymore.txt || echo "waymore failed."
 
-  # Deduplicate URLs and save final results
-  urldedupe -s "$ALL_URLS_FILE" > "$FINAL_URLS_FILE"
+  # Use katana to gather URLs
+  echo "Running katana..."
+  katana -u "$DOMAIN" -duc -silent -nc -jc -kf -fx -xhr -ef woff,css,png,svg,jpg,woff2,jpeg,gif,svg > katana.txt
 
-  # Run arjun to discover parameters and save the output
-  arjun -i "$FINAL_URLS_FILE" -t 10 -m GET,POST -oT "$ARJUN_PARAMS_FILE"
+  # Combine and deduplicate URLs
+  echo "Combining URLs..."
+  cat gauplus.txt waymore.txt katana.txt | urldedupe > final_urls.txt
+
+  # Run arjun to discover parameters
+  echo "Running arjun..."
+  arjun -i final_urls.txt -t 10 -m GET,POST -oT arjun_params.txt
+
+  echo "Processing completed for $DOMAIN."
 }
 
 # Process URL if provided
 if [ -n "$URL" ]; then
-  echo "URL provided: '$URL'"  # Debugging output with quotes
   DOMAIN=$(echo "$URL" | awk -F/ '{print $1}')
-  echo "Extracted domain from URL: '$DOMAIN'"  # Debugging output with quotes
   process_domain "$DOMAIN"
 else
   # Loop through each domain in the targets file
   while IFS= read -r DOMAIN; do
-    echo "Read line from file: '$DOMAIN'"  # Debugging output with quotes
-    DOMAIN=$(echo "$DOMAIN" | awk -F/ '{print $1}')  # Ensure domain extraction
-    echo "Extracted domain from file line: '$DOMAIN'"  # Debugging output with quotes
     process_domain "$DOMAIN"
   done < "$TARGET_FILE"
 fi
 
-echo "Recon completed. Check the current directory for final results."
+echo "Recon completed. Check recon_results directory for final results."
 
-echo "Final results saved as:"
-echo "*.txt files with domain-specific names."
+# Combine all arjun_params.txt files into one
+find recon_results -name "arjun_params.txt" -exec cat {} + > final_arjun_params.txt
+
+# Combine all final_urls.txt files into one
+find recon_results -name "final_urls.txt" -exec cat {} + > final_urls.txt
+
+echo "Final results saved in final_arjun_params.txt and final_urls.txt"
