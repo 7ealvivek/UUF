@@ -3,12 +3,17 @@
 # UUF: Unique URL Phasor
 
 **UUF** (Unique URL Phasor) is a tool designed for bug bounty hunters and security professionals to perform comprehensive reconnaissance on target domains. It automates the gathering of URLs, deduplicates them, and discovers potential parameters using various tools.
+**This tool is intended for educational purposes and ethical security testing only. The author does not take any responsibility for its misuse or any illegal activities performed with it.**
 
 ## Features
 
 - **URL Gathering**: Uses `gau`, `waybackurls`, and `katana` to collect URLs from different sources.
 - **URL Deduplication**: Deduplicates collected URLs to avoid redundant data.
 - **Parameter Discovery**: Uses `arjun` to discover potential parameters for further testing.
+
+## More Accurate on VPS (12-24 hours results) 
+
+## Arjun parameters >> Sqli,XSS,Lfi,RCE ( Injection based attacks )
 
 ## Requirements
 
