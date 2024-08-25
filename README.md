@@ -1,6 +1,4 @@
-Here's the updated GitHub description with a different example domain:
 
----
 
 # UUF: Unique URL Phasor
 
@@ -20,7 +18,7 @@ Ensure the following tools are installed:
 - [waybackurls](https://github.com/tomnomnom/waybackurls)
 - [katana](https://github.com/ledge/katana)
 - [arjun](https://github.com/s0md3v/Arjun)
-- [urldedupe](https://github.com/nao20010128nao/dedupurl) (Note: `dedupurl` should not be installed)
+- [urldedupe](https://github.com/ameenmaali/urldedupe)
 
 ## Installation
 
